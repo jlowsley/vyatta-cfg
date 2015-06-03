@@ -204,27 +204,20 @@ sub getInterfaces {
 }
 
 # Test if IP address is local to the system.
-# Implemented by doing bind since by default
-# Linux will only allow binding to local addresses
+# Can't implemented by doing bind if net.ipv4.ip_nonlocal = 1
+# workaround syscall to hostname
 sub is_local_address {
     my $addr = shift;
     my $ip = new NetAddr::IP $addr;
     die "$addr: not a valid IP address"
-        unless $ip;
+       unless $ip;
 
-    my ($pf, $sockaddr);
-    if ($ip->version() == 4) {
-        $pf = PF_INET;
-        $sockaddr = sockaddr_in(0, $ip->aton());
+    my @localAddrs = split(" ",`hostname -I`);
+    if ( grep { $_ eq $ip->addr } @localAddrs) {
+       return "1";
     } else {
-        $pf = PF_INET6;
-        $sockaddr = sockaddr_in6(0, $ip->aton());
+      return;
     }
-
-    socket( my $sock, $pf, SOCK_STREAM, 0)
-        or die "socket failed\n";
-
-    return bind($sock, $sockaddr);
 }
 
 # get list of IPv4 and IPv6 addresses
